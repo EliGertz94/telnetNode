@@ -8,24 +8,42 @@ const params = {
   timeout: 1500,
 };
 
-const password = 'your_password'; // Replace with your Telnet password
-const command = 'show run'; // Replace with the desired command
+const telnetPassword = 'your_telnet_password'; // Replace with your Telnet password
+const enablePassword = 'your_enable_password'; // Replace with your enable password
+const enableCommand = 'en'; // Command to enter enable mode
+const showRunCommand = 'sh run'; // Command to display the running configuration
 
 connection.on('ready', () => {
   // Send the Telnet password
-  connection.exec(password, (err, response) => {
+  connection.exec(telnetPassword, (err, response) => {
     if (err) {
-      console.error('Error entering password:', err);
+      console.error('Error entering Telnet password:', err);
     } else {
       console.log(response);
-      // Now, send the command
-      connection.exec(command, (err, response) => {
+      // Now, send the enable command
+      connection.exec(enableCommand, (err, response) => {
         if (err) {
-          console.error('Error executing command:', err);
+          console.error('Error entering enable command:', err);
         } else {
           console.log(response);
-          // Close the Telnet session
-          connection.end();
+          // Send the enable password
+          connection.exec(enablePassword, (err, response) => {
+            if (err) {
+              console.error('Error entering enable password:', err);
+            } else {
+              console.log(response);
+              // Now, send the "show run" command
+              connection.exec(showRunCommand, (err, response) => {
+                if (err) {
+                  console.error('Error executing "show run" command:', err);
+                } else {
+                  console.log(response);
+                  // Close the Telnet session
+                  connection.end();
+                }
+              });
+            }
+          });
         }
       });
     }
