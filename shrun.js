@@ -1,62 +1,53 @@
-const { Telnet } = require('telnet-client');
-const connection = new Telnet();
+var net = require('net');
 
-const params = {
-  host: '10.103.0.6', // Replace with the IP address of your Cisco device
-  port: 23, // The Telnet port (usually 23)
-  shellPrompt: '/ # ',
-  timeout: 1500,
-};
+var client = new net.Socket();
+client.connect(23, '10.103.0.3', function() {
+    console.log('Connected');
+    
+    // Send Telnet commands
+    client.write('weno1\r\n'); // Replace with your Telnet password
+    client.write('en\r\n'); // Enter enable mode if needed, replace with your enable password
+    client.write('weno1\r\n');
+    client.write('sh run\r\n'); // Send the "show run" command
+    
+    // You can send additional Telnet commands here
+   
+});
+let receivedData = '';
+let spaceSentCount = 0; // Number of times space has been sent
+const maxSpaceAttempts =7; // Maximum number of space attempts
+let timeout;
 
-const telnetPassword = 'your_telnet_password'; // Replace with your Telnet password
-const enablePassword = 'your_enable_password'; // Replace with your enable password
-const enableCommand = 'en'; // Command to enter enable mode
-const showRunCommand = 'sh run'; // Command to display the running configuration
 
-connection.on('ready', () => {
-  // Send the Telnet password
-  connection.exec(telnetPassword, (err, response) => {
-    if (err) {
-      console.error('Error entering Telnet password:', err);
-    } else {
-      console.log(response);
-      // Now, send the enable command
-      connection.exec(enableCommand, (err, response) => {
-        if (err) {
-          console.error('Error entering enable command:', err);
-        } else {
-          console.log(response);
-          // Send the enable password
-          connection.exec(enablePassword, (err, response) => {
-            if (err) {
-              console.error('Error entering enable password:', err);
-            } else {
-              console.log(response);
-              // Now, send the "show run" command
-              connection.exec(showRunCommand, (err, response) => {
-                if (err) {
-                  console.error('Error executing "show run" command:', err);
-                } else {
-                  console.log(response);
-                  // Close the Telnet session
-                  connection.end();
-                }
-              });
-            }
-          });
+client.on('data', function(data) {
+  
+    console.log('Received: ' + data);
+    receivedData += data.toString(); // Accumulate received data as a string
+    
+    // Check for the --More-- prompt and send a space to continue
+    if (receivedData.includes('--More--')) {
+        if (spaceSentCount < maxSpaceAttempts) {
+            client.write(' ');
+            spaceSentCount++;
+            // Set a timeout to send space again if needed (adjust the delay as necessary)
+            timeout = setTimeout(function() {
+                spaceSentCount = 0; // Reset space attempts after the timeout
+            }, 2000); // 2 seconds delay
         }
-      });
+    } else {
+        // Cancel the timeout when the prompt is no longer present
+        clearTimeout(timeout);
     }
-  });
+    
+    // To close the connection after receiving the desired data, you can add a condition.
+    if (spaceSentCount === maxSpaceAttempts && !receivedData.includes('--More--')) {
+        client.destroy();
+    }
 });
 
-connection.on('timeout', () => {
-  console.log('Socket timeout!');
-  connection.end();
+client.on('close', function() {
+    
+    console.log('Connection closed');
+    console.log('Received Data:');
+    console.log(receivedData); 
 });
-
-connection.on('close', () => {
-  console.log('Connection closed');
-});
-
-connection.connect(params);
