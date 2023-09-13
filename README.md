@@ -1,3 +1,4 @@
 - communocating with telnet in a local network using node js
-- npm init
-  
+- npm install
+- npm start
+- node shrun.js
